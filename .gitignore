@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+*.egg-info/
+
+# Data — large / raw files stay out of git (see data/README.md)
+data/newdatasetwithcoviddata.csv
+*.parquet
+
+# Model weights — retrain via notebooks/02_bert_training.ipynb (see models/README.md)
+models/**/*.bin
+models/**/*.safetensors
+models/**/pytorch_model.bin
+
+# Jupyter
+.ipynb_checkpoints/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+
+# pytest cache
+.pytest_cache/

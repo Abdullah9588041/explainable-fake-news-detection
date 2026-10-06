@@ -1,90 +1,122 @@
 # Explainable Fake News Detection using BERT
 
-This repository presents an end-to-end fake news detection system based on a fine-tuned
-Bidirectional Encoder Representations from Transformers (BERT) model.
-Beyond achieving strong predictive performance, the proposed system emphasizes
-model transparency by integrating Explainable Artificial Intelligence (XAI) techniques,
-namely LIME and SHAP, to provide word-level interpretations of predictions.
+End-to-end fake-news detection: a fine-tuned `bert-base-uncased` classifier with **SHAP** and
+**LIME** explanations and a live Hugging Face demo. Built as MS Data Science coursework
+(PAF-IAST) and maintained here as a portfolio project.
 
-The project is designed as a complete research and deployment pipeline, including
-data analysis, model training, evaluation, explainability, and real-world deployment.
+> **Suggested repo rename** (applied on GitHub by the owner): `explainable-fake-news-detection`
 
----
+## Problem statement
 
-## Key Contributions
-- Fine-tuning of a BERT-based model for binary fake news classification
-- Comprehensive evaluation using accuracy, precision, recall, and F1-score
-- Integration of SHAP for token-level contribution analysis
-- Integration of LIME for local, instance-level explanations
-- Deployment of the trained model as an interactive web application on Hugging Face Spaces
+Short social-media-style news texts need fast, trustworthy fake/real classification — and a
+bare accuracy number isn't enough for a system people should act on. This project answers:
 
----
+1. Can a fine-tuned BERT model separate fake from real short news texts?
+2. *Why* did it make each prediction — which words drove the decision (SHAP token attributions, LIME local explanations)?
+3. How does it behave under strong class imbalance (~84% fake in training)?
 
-## Dataset
-The experiments are conducted on a preprocessed short-text fake news dataset provided in CSV format:
-- `shorttextpreprocessedtrain.csv`
-- `shorttextpreprocessedtest.csv`
+## Methodology
 
-Each record in the dataset contains:
-- `text`: cleaned and normalized news text
-- `label`: binary class label (0 = Fake News, 1 = Real News)
+- **Model.** `bert-base-uncased` + sequence-classification head, fine-tuned with cross-entropy
+  loss and AdamW (`notebooks/02_bert_training.ipynb`).
+- **Evaluation.** Held-out test set (`notebooks/03_model_evaluation.ipynb`); per-class
+  precision/recall reported because of the imbalance — not just accuracy.
+- **Explainability.** SHAP for token-level Shapley attributions
+  (`notebooks/04_explainability_shap.ipynb`); LIME for instance-level explanations rendered as a
+  lightweight table for deployment (`notebooks/05_explainability_lime.ipynb`).
+- **Deployment.** Interactive Gradio app on Hugging Face Spaces.
 
-The dataset exhibits class imbalance, reflecting real-world misinformation patterns,
-and is suitable for evaluating both classification performance and explainability methods.
+## Results
 
----
+All numbers below are read from `results/metrics.txt` (test set, **Real News as the positive class**)
+and the accompanying report — nothing is rounded beyond display.
 
-## Model and Methodology
-The classification model is based on `bert-base-uncased` with a sequence classification head.
-Texts are tokenized using the BERT tokenizer with truncation and padding, and the model
-is fine-tuned using cross-entropy loss and the AdamW optimizer.
+| Metric | Value |
+|---|---|
+| Accuracy | 0.9057 |
+| Precision (Real) | 0.7035 |
+| Recall (Real) | 0.6778 |
+| F1-score (Real) | 0.6904 |
 
-Evaluation is performed on a held-out test set, where the model achieves approximately
-**91% accuracy**, with detailed class-wise performance analysis reported in the project notebooks
-and accompanying IEEE-format report.
+Dataset: 25,336 training / 6,525 test short texts (`text`, `label` with 0 = Fake, 1 = Real);
+training split is 21,390 fake / 3,946 real.
 
----
+**Reading the numbers honestly:** accuracy looks high because the majority class (fake) dominates;
+the per-class scores show the model is much less certain on real news (F1 0.69). The confusion
+matrix (`results/confusion_matrix.png`) and the class-distribution plot tell the same story.
 
-## Explainability
-To improve interpretability and user trust, the project integrates two complementary
-explainability techniques:
-- **SHAP**: Provides token-level contribution analysis based on Shapley value approximations
-- **LIME**: Generates local explanations by identifying words that most influence individual predictions
+**Live demo:** 👉 https://huggingface.co/spaces/AbdullahBinAjmal/fake-news-bert
+(verified reachable 2026-10-06; type any news text, get the prediction plus a LIME explanation)
 
-For deployment compatibility, LIME explanations are rendered as a lightweight tabular
-visualization highlighting influential words and their contribution weights.
+## Quick start
 
----
+```bash
+pip install -r requirements.txt        # 1. dependencies
+pytest -q                               # 2. run the test suite (no GPU needed)
+jupyter notebook notebooks/             # 3. run 01 → 05 in order
+```
 
-## Deployment
-The trained model is deployed as an interactive web application using Hugging Face Spaces.
-The application allows users to input news text, view predicted probabilities, and generate
-LIME-based explanations in real time.
+Retraining needs a GPU and ~3 GB free; evaluation/explainability notebooks can run against any
+compatible checkpoint placed in `models/bert_fake_news_model/` (see `models/README.md`).
 
-**Live Demo:**  
-👉 https://huggingface.co/spaces/AbdullahBinAjmal/fake-news-bert
+## Project structure
 
----
+```
+├── README.md
+├── LICENSE (MIT)
+├── requirements.txt          # pinned
+├── pyproject.toml
+├── .github/workflows/ci.yml  # pytest on 3.10/3.11/3.12
+├── src/fakenews/             # evaluation + explainability helpers (tested)
+│   ├── evaluation.py         # metrics computation, results/metrics.txt parser
+│   └── explain.py            # LIME HTML validation, artifact inventory
+├── tests/                    # 18 tests: data schema, metrics, artifacts, hygiene
+├── notebooks/
+│   ├── 01_data_exploration.ipynb
+│   ├── 02_bert_training.ipynb
+│   ├── 03_model_evaluation.ipynb
+│   ├── 04_explainability_shap.ipynb
+│   └── 05_explainability_lime.ipynb   # outputs stripped; re-run to regenerate
+├── data/
+│   ├── shorttextpreprocessedtrain.csv # 25,336 rows (tracked)
+│   ├── shorttextpreprocessedtest.csv  # 6,525 rows (tracked)
+│   └── README.md                     # provenance notes (honest: source undocumented)
+├── models/
+│   └── README.md             # weights not committed; how to retrain
+├── results/                  # metrics.txt, figures, LIME HTML, deployment screenshot
+└── Report_LaTeX/             # original IEEE-format course report (PDF + source)
+```
 
-## Project Structure
-- `data/` – preprocessed training and test datasets  
-- `notebooks/` – Jupyter notebooks for data analysis, training, evaluation, SHAP, and LIME  
-- `results/` – evaluation metrics, confusion matrix, and explanation visualizations  
-- `report/` – IEEE-format LaTeX source and compiled PDF  
+## Reproducibility
 
----
+- Dependencies are pinned in `requirements.txt`; CI runs the test suite on Python 3.10–3.12.
+- `src/fakenews` + `tests/` verify the data contract and that `results/metrics.txt` matches the
+  headline numbers, so the README can never drift from the experiment output.
+- Notebook outputs are stripped in git (keeps the repo small); re-run to regenerate figures.
+- Random seeds: set inside the training/evaluation notebooks (see notebook 02/03).
+- Original training hardware: GPU (see `notebooks/02_bert_training.ipynb` for training arguments).
 
-## Technologies Used
-- Python  
-- PyTorch  
-- Hugging Face Transformers  
-- LIME  
-- SHAP  
-- Gradio  
+## Limitations & future work
 
----
+- **Class imbalance:** with ~84% fake in training, the model is conservative on real news
+  (recall 0.68). Class-weighted loss or threshold tuning would likely help.
+- **Data provenance:** the preprocessed files were provided as coursework; the upstream source
+  is undocumented (see `data/README.md`). Re-validate labels and check train/test leakage before
+  strong claims.
+- **Short English texts only:** no evidence yet on long articles, other languages, or new topics
+  (temporal drift untested).
+- **SHAP cost:** exact-ish Shapley attributions on BERT are expensive; the notebook uses
+  approximations — explanation fidelity vs. speed is an open trade-off.
+- **Future:** calibration analysis, adversarial/robustness tests, multilingual extension,
+  comparing against modern baselines (DeBERTa, LLM zero-shot).
+
+## References
+
+- Devlin et al., *BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding* (2018)
+- Lundberg & Lee, *A Unified Approach to Interpreting Model Predictions* (SHAP, 2017)
+- Ribeiro et al., *"Why Should I Trust You?": Explaining the Predictions of Any Classifier* (LIME, 2016)
+- Full write-up: `Report_LaTeX/Abdullah_M24F0044DS009.pdf`
 
 ## Author
-**Abdullah**  
-MS Data Science  
-Pak-Austria Fachhochschule: Institute of Applied Sciences and Technology  
+
+**Abdullah Ajmal** — MS Data Science, PAF-IAST · [GitHub](https://github.com/Abdullah9588041) · [LinkedIn](https://www.linkedin.com/in/abdullah-ajmal-050507183)
